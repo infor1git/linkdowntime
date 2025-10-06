@@ -1,0 +1,137 @@
+# Link Downtime Manager Plugin
+# Portuguese (Brazil) translations - VERSÃO COMPLETA
+msgid ""
+msgstr ""
+"Language: pt_BR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "Link Downtime Manager"
+msgstr "Gerenciador de Quedas de Link"
+
+msgid "Link Downtime"
+msgid_plural "Link Downtimes"
+msgstr[0] "Queda de Link"
+msgstr[1] "Quedas de Link"
+
+msgid "Downtime Records"
+msgstr "Registros de Queda"
+
+msgid "Start Date/Time"
+msgstr "Data/Hora de Início"
+
+msgid "End Date/Time"
+msgstr "Data/Hora de Fim"
+
+msgid "Communication Date/Time"
+msgstr "Data/Hora da Comunicação"
+
+msgid "Observation"
+msgstr "Observações"
+
+msgid "Dashboard"
+msgstr "Dashboard"
+
+msgid "Required fields"
+msgstr "Campos obrigatórios"
+
+# Integração com chamados
+msgid "Related Ticket"
+msgstr "Chamado Relacionado"
+
+msgid "Creating downtime for ticket:"
+msgstr "Criando queda para o chamado:"
+
+msgid "Back to Ticket"
+msgstr "Voltar ao Chamado"
+
+msgid "Link Downtimes associated with this ticket"
+msgstr "Quedas de Link associadas a este chamado"
+
+msgid "Add Link Downtime for this ticket"
+msgstr "Adicionar Queda de Link para este chamado"
+
+msgid "No link downtime associated with this ticket"
+msgstr "Nenhuma queda de link associada a este chamado"
+
+msgid "Duration"
+msgstr "Duração"
+
+msgid "Ongoing"
+msgstr "Em andamento"
+
+msgid "Not finished"
+msgstr "Não finalizada"
+
+# Busca de chamados
+msgid "Type ticket number or title to search..."
+msgstr "Digite o número ou título do chamado para buscar..."
+
+msgid "Clear selection"
+msgstr "Limpar seleção"
+
+# Ações e confirmações
+msgid "Confirm the final deletion?"
+msgstr "Confirma a exclusão definitiva?"
+
+msgid "Delete permanently"
+msgstr "Excluir definitivamente"
+
+# Mensagens de erro (mantidas)
+msgid "Location is required"
+msgstr "Localização é obrigatória"
+
+msgid "Supplier is required"
+msgstr "Fornecedor é obrigatório"
+
+msgid "Start Date/Time is required"
+msgstr "Data/Hora de Início é obrigatória"
+
+msgid "Invalid Start Date/Time format"
+msgstr "Formato inválido para Data/Hora de Início"
+
+msgid "Invalid End Date/Time format"
+msgstr "Formato inválido para Data/Hora de Fim"
+
+msgid "Invalid Communication Date/Time format"
+msgstr "Formato inválido para Data/Hora da Comunicação"
+
+msgid "End Date/Time must be after Start Date/Time"
+msgstr "Data/Hora de Fim deve ser posterior à Data/Hora de Início"
+
+# Dashboard (mantidas)
+msgid "Year:"
+msgstr "Ano:"
+
+msgid "Filter"
+msgstr "Filtrar"
+
+msgid "Global Statistics"
+msgstr "Estatísticas Globais"
+
+msgid "Total Incidents"
+msgstr "Total de Incidentes"
+
+msgid "Affected Locations"
+msgstr "Localizações Afetadas"
+
+msgid "Total Downtime (hours)"
+msgstr "Tempo Total de Queda (horas)"
+
+msgid "Downtime %"
+msgstr "% de Queda"
+
+msgid "Uptime %"
+msgstr "% de Disponibilidade"
+
+msgid "Statistics by Location"
+msgstr "Estatísticas por Localização"
+
+msgid "Incidents"
+msgstr "Incidentes"
+
+msgid "Downtime (hours)"
+msgstr "Tempo de Queda (horas)"
+
+msgid "Downtime Statistics for %d"
+msgstr "Estatísticas de Queda para %d"
