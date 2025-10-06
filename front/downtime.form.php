@@ -1,7 +1,8 @@
 <?php
 /**
- * Formulário de Link Downtime - CORRIGIDO
- * Usa Html::redirect() para evitar tela branca
+ * Formulário de Link Downtime - Corrigido (redirect robusto para ticket + fallback)
+ * - Busca tickets_id no GET/POST e, se ausente, tenta pegar do registro no DB antes do redirect.
+ * - Usa Toolbox::logInFile() para logging compatível com GLPI 10.
  */
 
 include ('../../../inc/includes.php');
@@ -13,26 +14,24 @@ $downtime = new PluginLinkdowntimeDowntime();
 $redirect_to_ticket = false;
 $ticket_id = 0;
 
-// Detecta se veio de ticket via GET
-if (isset($_GET['tickets_id']) && (int)$_GET['tickets_id'] > 0) {
+// Detecta se veio de ticket via GET ou POST
+if (!empty($_GET['tickets_id'])) {
     $redirect_to_ticket = true;
     $ticket_id = (int)$_GET['tickets_id'];
 }
-
-// Detecta se veio de ticket via POST
-if (isset($_POST['tickets_id']) && (int)$_POST['tickets_id'] > 0) {
+if (!empty($_POST['tickets_id'])) {
     $redirect_to_ticket = true;
     $ticket_id = (int)$_POST['tickets_id'];
 }
 
 /**
- * Helper para redirecionar
+ * Helper para redirecionar corretamente ao ticket
  */
 function redirectToTicketOrUrl($ticket_id, $urlIfNoTicket) {
     global $CFG_GLPI;
     if (!empty($ticket_id) && $ticket_id > 0) {
-        $forcetab = "PluginLinkdowntimeDowntime";
-        $target = $CFG_GLPI["root_doc"] . "/front/ticket.form.php?id=" . $ticket_id . "&forcetab=" . $forcetab;
+        $forcetab = 'PluginLinkdowntimeDowntime$1';
+        $target = $CFG_GLPI["root_doc"] . "/front/ticket.form.php?id=" . (int)$ticket_id . "&forcetab=" . $forcetab;
         Html::redirect($target);
     } else {
         Html::redirect($urlIfNoTicket);
@@ -45,21 +44,29 @@ function redirectToTicketOrUrl($ticket_id, $urlIfNoTicket) {
  */
 if (isset($_POST["add"])) {
     $downtime->check(-1, CREATE, $_POST);
-
     $newID = $downtime->add($_POST);
 
     if (!$newID) {
         error_log('LinkDowntime add() falhou.');
-        if ($redirect_to_ticket && $ticket_id > 0) {
-            Html::redirect($downtime->getFormURL() . "?tickets_id=" . $ticket_id);
+        // Tenta usar ticket_id do POST/GET (já avaliado acima)
+        if ($redirect_to_ticket) {
+            redirectToTicketOrUrl($ticket_id, $downtime->getFormURL());
         } else {
             Html::redirect($downtime->getFormURL());
         }
     } else {
-        Event::log($newID, "linkdowntime", 4, "tools",
-                  sprintf(__('%1$s adds the item %2$s'), $_SESSION["glpiname"], $_POST["name"] ?? $newID));
+        Toolbox::logInFile('linkdowntime', sprintf('%s adicionou o item %s', $_SESSION["glpiname"], $_POST["name"] ?? $newID));
 
-        if ($redirect_to_ticket && $ticket_id > 0) {
+        // Tentativa adicional: se tickets_id não veio no POST, tenta buscar no registro
+        if (!$redirect_to_ticket) {
+            $downtime->getFromDB($newID);
+            if (!empty($downtime->fields['tickets_id'])) {
+                $redirect_to_ticket = true;
+                $ticket_id = (int)$downtime->fields['tickets_id'];
+            }
+        }
+
+        if ($redirect_to_ticket) {
             redirectToTicketOrUrl($ticket_id, $downtime->getFormURLWithID($newID));
         } else {
             Html::redirect($downtime->getFormURLWithID($newID));
@@ -74,13 +81,18 @@ if (isset($_POST["add"])) {
     $downtime->check($id, DELETE);
 
     if ($id > 0 && $downtime->getFromDB($id)) {
+
+        // Se tickets_id não veio no POST/GET, pega do registro
+        if (!$redirect_to_ticket && !empty($downtime->fields['tickets_id'])) {
+            $redirect_to_ticket = true;
+            $ticket_id = (int)$downtime->fields['tickets_id'];
+        }
+
         $result = $downtime->delete($_POST);
 
         if ($result) {
-            Event::log($id, "linkdowntime", 4, "tools",
-                      sprintf(__('%s deletes an item'), $_SESSION["glpiname"]));
-
-            if (!empty($_POST['_from_ticket']) || $ticket_id > 0) {
+            Toolbox::logInFile('linkdowntime', sprintf('%s excluiu o item ID %d', $_SESSION["glpiname"], $id));
+            if ($redirect_to_ticket) {
                 redirectToTicketOrUrl($ticket_id, $downtime->getSearchURL());
             } else {
                 Html::redirect($downtime->getSearchURL());
@@ -89,7 +101,45 @@ if (isset($_POST["add"])) {
             Html::redirect($downtime->getFormURLWithID($id));
         }
     } else {
-        Html::redirect($downtime->getSearchURL());
+        // Mesmo que não exista, se veio de ticket, volta para a aba do ticket
+        if ($redirect_to_ticket) {
+            redirectToTicketOrUrl($ticket_id, $downtime->getSearchURL());
+        } else {
+            Html::redirect($downtime->getSearchURL());
+        }
+    }
+
+/**
+ * ATUALIZAR
+ */
+} else if (isset($_POST["update"])) {
+    $id = (int)($_POST["id"] ?? 0);
+    $downtime->check($id, UPDATE);
+
+    // Se tickets_id não veio no POST/GET, tenta carregar antes de atualizar
+    if ($id > 0 && !$redirect_to_ticket && $downtime->getFromDB($id)) {
+        if (!empty($downtime->fields['tickets_id'])) {
+            $redirect_to_ticket = true;
+            $ticket_id = (int)$downtime->fields['tickets_id'];
+        }
+    }
+
+    $downtime->update($_POST);
+
+    // Recarrega para pegar eventual tickets_id atualizado
+    if ($id > 0 && $downtime->getFromDB($id)) {
+        if (!empty($downtime->fields['tickets_id'])) {
+            $redirect_to_ticket = true;
+            $ticket_id = (int)$downtime->fields['tickets_id'];
+        }
+    }
+
+    Toolbox::logInFile('linkdowntime', sprintf('%s atualizou o item ID %d', $_SESSION["glpiname"], $id));
+
+    if ($redirect_to_ticket) {
+        redirectToTicketOrUrl($ticket_id, $downtime->getFormURLWithID($id));
+    } else {
+        Html::redirect($downtime->getFormURLWithID($id));
     }
 
 /**
@@ -98,10 +148,28 @@ if (isset($_POST["add"])) {
 } else if (isset($_POST["restore"])) {
     $id = (int)($_POST["id"] ?? 0);
     $downtime->check($id, DELETE);
+
+    if ($id > 0 && $downtime->getFromDB($id)) {
+        // busca tickets_id do registro, caso não venha no POST/GET
+        if (!$redirect_to_ticket && !empty($downtime->fields['tickets_id'])) {
+            $redirect_to_ticket = true;
+            $ticket_id = (int)$downtime->fields['tickets_id'];
+        }
+    }
+
     if ($downtime->restore($_POST)) {
-        Html::redirect($downtime->getFormURLWithID($id));
+        Toolbox::logInFile('linkdowntime', sprintf('%s restaurou o item ID %d', $_SESSION["glpiname"], $id));
+        if ($redirect_to_ticket) {
+            redirectToTicketOrUrl($ticket_id, $downtime->getFormURLWithID($id));
+        } else {
+            Html::redirect($downtime->getFormURLWithID($id));
+        }
     } else {
-        Html::redirect($downtime->getSearchURL());
+        if ($redirect_to_ticket) {
+            redirectToTicketOrUrl($ticket_id, $downtime->getSearchURL());
+        } else {
+            Html::redirect($downtime->getSearchURL());
+        }
     }
 
 /**
@@ -112,8 +180,15 @@ if (isset($_POST["add"])) {
     $downtime->check($id, PURGE);
 
     if ($id > 0 && $downtime->getFromDB($id)) {
+        // pega tickets_id se houver
+        if (!$redirect_to_ticket && !empty($downtime->fields['tickets_id'])) {
+            $redirect_to_ticket = true;
+            $ticket_id = (int)$downtime->fields['tickets_id'];
+        }
+
         if ($downtime->delete($_POST, 1)) {
-            if (!empty($_POST['_from_ticket']) || $ticket_id > 0) {
+            Toolbox::logInFile('linkdowntime', sprintf('%s purgou o item ID %d', $_SESSION["glpiname"], $id));
+            if ($redirect_to_ticket) {
                 redirectToTicketOrUrl($ticket_id, $downtime->getSearchURL());
             } else {
                 Html::redirect($downtime->getSearchURL());
@@ -122,22 +197,11 @@ if (isset($_POST["add"])) {
             Html::redirect($downtime->getFormURLWithID($id));
         }
     } else {
-        Html::redirect($downtime->getSearchURL());
-    }
-
-/**
- * ATUALIZAR
- */
-} else if (isset($_POST["update"])) {
-    $id = (int)($_POST["id"] ?? 0);
-    $downtime->check($id, UPDATE);
-
-    $downtime->update($_POST);
-
-    if (!empty($_POST['_from_ticket']) || $ticket_id > 0) {
-        redirectToTicketOrUrl($ticket_id, $downtime->getFormURLWithID($id));
-    } else {
-        Html::redirect($downtime->getFormURLWithID($id));
+        if ($redirect_to_ticket) {
+            redirectToTicketOrUrl($ticket_id, $downtime->getSearchURL());
+        } else {
+            Html::redirect($downtime->getSearchURL());
+        }
     }
 
 /**
@@ -148,7 +212,7 @@ if (isset($_POST["add"])) {
 
     if ($ID == 0) {
         $downtime->getEmpty();
-        if (isset($_GET['tickets_id']) && (int)$_GET['tickets_id'] > 0) {
+        if (!empty($_GET['tickets_id']) && (int)$_GET['tickets_id'] > 0) {
             $ticket_id = (int)$_GET['tickets_id'];
             $ticket = new Ticket();
             if ($ticket->getFromDB($ticket_id)) {
@@ -163,9 +227,15 @@ if (isset($_POST["add"])) {
 
     Html::header(__('Link Downtime Manager', 'linkdowntime'), $_SERVER['PHP_SELF'], "tools", "pluginlinkdowntimemenu", "downtime");
 
+    // Passa tickets_id tanto do GET quanto do registro (para o template)
+    // Garante que fields exista
+    $fields_for_template = $downtime->fields ?? [];
+    $fields_for_template['tickets_id'] = $ticket_id ?? 0;
+
     $downtime->display([
-        'id'         => $ID,
-        'tickets_id' => (int)($_GET['tickets_id'] ?? 0)
+        'id' => $ID,
+        'tickets_id' => $ticket_id,
+        'fields' => $fields_for_template,
     ]);
 
     Html::footer();

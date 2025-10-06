@@ -40,10 +40,10 @@ msgid "Related Ticket"
 msgstr "Chamado Relacionado"
 
 msgid "Creating downtime for ticket:"
-msgstr "Criando queda para o chamado:"
+msgstr "Criando queda de link para o chamado:"
 
 msgid "Back to Ticket"
-msgstr "Voltar ao Chamado"
+msgstr "Ir ao Chamado"
 
 msgid "Link Downtimes associated with this ticket"
 msgstr "Quedas de Link associadas a este chamado"

@@ -62,7 +62,6 @@ function plugin_init_linkdowntime() {
     // Registrar classes principais do plugin
     Plugin::registerClass('PluginLinkdowntimeDowntime', [
         'addtabon' => ['Ticket'],  // CORREÇÃO: Adicionar aba especificamente no Ticket
-        'linkstate' => true
     ]);
     
     Plugin::registerClass('PluginLinkdowntimeMenu');

@@ -23,7 +23,7 @@ function plugin_linkdowntime_install() {
             `name` varchar(255) NOT NULL DEFAULT '',
             `locations_id` int(11) NOT NULL DEFAULT '0',
             `suppliers_id` int(11) NOT NULL DEFAULT '0',
-            `tickets_id` int(11) NOT NULL DEFAULT '0',
+            `tickets_id` int(10) UNSIGNED NOT NULL DEFAULT '0',
             `start_datetime` datetime DEFAULT NULL,
             `end_datetime` datetime DEFAULT NULL,
             `communication_datetime` datetime DEFAULT NULL,

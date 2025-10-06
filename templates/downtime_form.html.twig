@@ -16,24 +16,27 @@
       <input type="hidden" name="is_recursive" value="{{ item.fields['is_recursive'] }}" />
       <input type="hidden" name="id" value="{{ item.fields['id'] }}" />
       <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}" />
-      
-      {# Pegar tickets_id do GET se estiver criando via chamado #}
-      {% if get.tickets_id is defined %}
-         <input type="hidden" name="tickets_id" value="{{ get.tickets_id }}" />
+
+      {# Pegar tickets_id do GET se estiver criando via chamado, ou do próprio registro se existe #}
+      {% set ticket_input_value = params.tickets_id ?? item.fields['tickets_id'] ?? '' %}
+      {% if ticket_input_value %}
+         <input type="hidden" name="tickets_id" value="{{ ticket_input_value }}" />
       {% endif %}
       
       {# Container principal #}
       <div class="row">
          <div class="col-12">
             <div class="card">
-               <div class="card-header">
-                  <h4><i class="fas fa-network-wired"></i> {{ __('Link Downtime Manager', 'linkdowntime') }}</h4>
-                  {% if get.tickets_id is defined %}
-                     <p class="text-muted mb-0">
-                        <i class="fas fa-ticket-alt"></i> 
-                        {{ __('Creating downtime for ticket:', 'linkdowntime') }} #{{ get.tickets_id }}
-                     </p>
-                  {% endif %}
+               <div class="card-header d-flex justify-content-between align-items-center">
+               <h4 class="mb-0">
+                  <i class="fas fa-network-wired"></i>&nbsp; {{ __('Link Downtime Manager', 'linkdowntime') }}
+               </h4>
+               {% if get.tickets_id is defined %}
+                  <p class="text-muted mb-0">
+                     <i class="fas fa-ticket-alt"></i>&nbsp;
+                     {{ __('Creating downtime for ticket:', 'linkdowntime') }} #{{ get.tickets_id }}
+                  </p>
+               {% endif %}
                </div>
                
                <div class="card-body">
@@ -59,7 +62,7 @@
                         'Location',
                         'locations_id',
                         item.fields['locations_id'],
-                        __('Location')|e ~ ' *',
+                        __('Location')|e,
                         {
                            'entity': item.fields['entities_id'],
                            'entity_sons': true,
@@ -75,7 +78,7 @@
                         'suppliers_id',
                         item.fields['suppliers_id'],
                         suppliers_with_tag,
-                        __('Supplier')|e ~ ' *',
+                        __('Supplier')|e,
                         {
                            'display_emptychoice': true,
                            'required': true
@@ -88,7 +91,7 @@
                      {{ fields.datetimeField(
                         'start_datetime',
                         item.fields['start_datetime'],
-                        __('Start Date/Time', 'linkdowntime')|e ~ ' *',
+                        __('Start Date/Time', 'linkdowntime')|e,
                         {
                            'required': true
                         }
@@ -130,7 +133,7 @@
 
                   {# Aviso de campos obrigatórios #}
                   <div class="alert alert-info">
-                     <i class="fas fa-info-circle"></i>
+                     <i class="fas fa-info-circle"></i>&nbsp;
                      <strong>{{ __('Required fields', 'linkdowntime') }}:</strong>
                      {{ __('Location') }}, {{ __('Supplier') }}, {{ __('Start Date/Time', 'linkdowntime') }}
                   </div>
@@ -141,26 +144,28 @@
                         {% if not item.isNewID(item.fields['id']) and item.canUpdateItem() %}
                            <button type="submit" name="delete" value="1" class="btn btn-danger" 
                                    onclick="return confirm('{{ __('Confirm the final deletion?')|e }}')">
-                              <i class="fas fa-trash"></i> {{ __('Delete permanently') }}
+                              <i class="fas fa-trash"></i>&nbsp; {{ __('Delete permanently') }}
                            </button>
                         {% endif %}
                      </div>
                      
                      <div>
-                        {% if params.tickets_id is defined and params.tickets_id > 0 %}
-                           <a href="{{ config('root_doc') }}/front/ticket.form.php?id={{ params.tickets_id }}&forcetab=PluginLinkdowntimeDowntime$1" 
+                        {% set ticket_id = item.fields['tickets_id']|default(0) %}
+
+                        {% if ticket_id > 0 %}
+                           <a href="/front/ticket.form.php?id={{ ticket_id }}&forcetab=PluginLinkdowntimeDowntime$1"
                               class="btn btn-secondary me-2">
-                              <i class="fas fa-arrow-left"></i> {{ __('Back to Ticket', 'linkdowntime') }}
+                              <i class="fas fa-arrow-left"></i>&nbsp; {{ __('Back to Ticket', 'linkdowntime') }}
                            </a>
                         {% endif %}
                         
                         {% if item.isNewID(item.fields['id']) %}
                            <button type="submit" name="add" value="1" class="btn btn-primary">
-                              <i class="fas fa-plus"></i> {{ __('Add') }}
+                              <i class="fas fa-plus"></i>&nbsp; {{ __('Add') }}
                            </button>
                         {% else %}
                            <button type="submit" name="update" value="1" class="btn btn-primary">
-                              <i class="fas fa-save"></i> {{ __('Update') }}
+                              <i class="fas fa-save"></i>&nbsp; {{ __('Update') }}
                            </button>
                         {% endif %}
                      </div>
