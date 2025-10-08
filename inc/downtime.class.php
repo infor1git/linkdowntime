@@ -28,7 +28,7 @@ class PluginLinkdowntimeDowntime extends CommonDBTM {
         }
         return '';
     }
-    
+
     /**
      * CORREÇÃO: Exibir conteúdo da aba corretamente
      */
@@ -520,8 +520,65 @@ class PluginLinkdowntimeDowntime extends CommonDBTM {
     static function canPurge() {
         return Session::haveRight(static::$rightname, PURGE);
     }
+
+    function getSearchOptions() {
+        $tab = [];
+
+        $tab['common'] = __('Características', 'linkdowntime');
+
+        // ID
+        $tab[1]['table']         = $this->getTable();
+        $tab[1]['field']         = 'id';
+        $tab[1]['name']          = __('ID');
+        $tab[1]['datatype']      = 'number';
+        $tab[1]['massiveaction'] = false;
+
+        // Nome
+        $tab[2]['table']         = $this->getTable();
+        $tab[2]['field']         = 'name';
+        $tab[2]['name']          = __('Nome');
+        $tab[2]['datatype']      = 'itemlink';
+
+        // Localização
+        $tab[3]['table']         = 'glpi_locations';
+        $tab[3]['field']         = 'name';
+        $tab[3]['name']          = __('Localização');
+        $tab[3]['datatype']      = 'dropdown';
+        $tab[3]['right']         = 'all';
+        $tab[3]['joinparams']    = ['jointype' => 'child'];
+
+        // Fornecedor
+        $tab[4]['table']         = 'glpi_suppliers';
+        $tab[4]['field']         = 'name';
+        $tab[4]['name']          = __('Fornecedor');
+        $tab[4]['datatype']      = 'dropdown';
+        $tab[4]['right']         = 'all';
+        $tab[4]['joinparams']    = ['jointype' => 'child'];
+
+        // Data/Hora Início
+        $tab[5]['table']         = $this->getTable();
+        $tab[5]['field']         = 'start_datetime';
+        $tab[5]['name']          = __('Data/Hora Início');
+        $tab[5]['datatype']      = 'datetime';
+
+        // Data/Hora Fim
+        $tab[6]['table']         = $this->getTable();
+        $tab[6]['field']         = 'end_datetime';
+        $tab[6]['name']          = __('Data/Hora Fim');
+        $tab[6]['datatype']      = 'datetime';
+
+        // Chamado Relacionado
+        $tab[7]['table']         = 'glpi_tickets';
+        $tab[7]['field']         = 'name';
+        $tab[7]['name']          = __('Chamado Relacionado');
+        $tab[7]['datatype']      = 'dropdown';
+        $tab[7]['right']         = 'all';
+        $tab[7]['joinparams']    = ['jointype' => 'child'];
+
+        return $tab;
+        }
     
-    function getSearchOptionsNew() {
+    function rawSearchOptions() {
         $tab = [];
         
         $tab[] = [
@@ -557,9 +614,9 @@ class PluginLinkdowntimeDowntime extends CommonDBTM {
         $tab[] = [
             'id'            => '8',
             'table'         => 'glpi_tickets',
-            'field'         => 'name',
+            'field'         => 'id',
             'name'          => __('Ticket'),
-            'datatype'      => 'dropdown'
+            'datatype'      => 'itemlink'
         ];
         
         $tab[] = [
@@ -616,7 +673,6 @@ class PluginLinkdowntimeDowntime extends CommonDBTM {
                     AND d.is_deleted = 0
                     AND d.start_datetime IS NOT NULL 
                     AND d.end_datetime IS NOT NULL
-                  WHERE l.is_deleted = 0
                   GROUP BY l.id, l.name
                   ORDER BY l.name";
         
@@ -646,28 +702,37 @@ class PluginLinkdowntimeDowntime extends CommonDBTM {
     
     public static function getGlobalDowntimeStats($year = null) {
         global $DB;
-        
-        if ($year === null) {
-            $year = date('Y');
-        }
-        
-        $query = "SELECT 
-                    COUNT(d.id) as total_incidents,
-                    SUM(TIMESTAMPDIFF(MINUTE, d.start_datetime, d.end_datetime)) as total_downtime_minutes,
-                    COUNT(DISTINCT d.locations_id) as affected_locations
-                  FROM glpi_plugin_linkdowntime_downtimes d
-                  WHERE YEAR(d.start_datetime) = '$year'
-                    AND d.is_deleted = 0
+        if ($year == null) $year = date('Y');
+        $year = intval($year);
+
+        $query = "SELECT COUNT(d.id) as total_incidents, SUM(TIMESTAMPDIFF(MINUTE, d.start_datetime, d.end_datetime)) as total_downtime_minutes, COUNT(DISTINCT d.locations_id) as affected_locations 
+                FROM glpi_plugin_linkdowntime_downtimes d 
+                WHERE YEAR(d.start_datetime) = $year
+                    AND d.is_deleted = 0 
                     AND d.start_datetime IS NOT NULL 
                     AND d.end_datetime IS NOT NULL";
-        
         $result = $DB->query($query);
-        $row = $DB->fetchAssoc($result);
+
+        if ($result === false) {
+            error_log("LinkDownTime: Erro na query getGlobalDowntimeStats. SQL: $query - DB error: " . $DB->error());
+            return [
+                'totalincidents' => 0,
+                'affectedlocations' => 0,
+                'totallocations' => 0,
+                'downtimeminutes' => 0,
+                'downtimehours' => 0,
+                'downtimepercentage' => 0,
+                'uptimepercentage' => 100
+            ];
+            // Certifique-se de que não tem código abaixo!
+        }
+
+        $row = $DB->fetchAssoc($result); // só vai executar se o result for válido!
         
         $downtime_minutes = (int)$row['total_downtime_minutes'];
         $downtime_hours = round($downtime_minutes / 60, 2);
         
-        $locations_query = "SELECT COUNT(*) as total_locations FROM glpi_locations WHERE is_deleted = 0";
+        $locations_query = "SELECT COUNT(*) as total_locations FROM glpi_locations";
         $locations_result = $DB->query($locations_query);
         $locations_row = $DB->fetchAssoc($locations_result);
         $total_locations = (int)$locations_row['total_locations'];

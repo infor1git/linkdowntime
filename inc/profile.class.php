@@ -1,112 +1,117 @@
 <?php
-/**
- * Classe para gerenciar direitos do plugin LinkDowntime
- * Necessária para aparecer na interface dos perfis no GLPI 10.x
- */
 
-if (!defined('GLPI_ROOT')) {
-    die("Sorry. You can't access directly to this file");
-}
+class PluginLinkdowntimeProfile extends CommonDBTM {
 
-class PluginLinkdowntimeProfile extends Profile {
-    
-    static $rightname = "profile";
-    
-    /**
-     * Exibir direitos do plugin na interface de perfil
-     */
-    function showForm($ID, $options = []) {
-        
-        echo "<div class='spaced' id='tabsbody'>";
-        echo "<table class='tab_cadre_fixe'>";
-        
-        echo "<tr class='tab_bg_1'>";
-        echo "<th colspan='4'>" . __('Link Downtime Manager', 'linkdowntime') . "</th>";
-        echo "</tr>";
-        
+    static public $rightname = 'linkdowntime';
+
+    static function getTypeName($nb = 0) {
+        return __('Link Downtime', 'linkdowntime');
+    }
+
+    public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0) {
+        if ($item instanceof Profile && $item->getField('id')) {
+            return self::createTabEntry(self::getTypeName());
+        }
+        return '';
+    }
+
+    static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0) {
+        if ($item instanceof Profile && $item->getField('id')) {
+            $profile = new PluginLinkdowntimeProfile();
+            // CORRETO: use $item->fields['id'] ou $item->getField('id')
+            return $profile->showForProfile($item->fields['id']);
+        }
+        return true;
+    }
+
+
+    static function getAllRights($all = false) {
+        return [
+            [
+                'itemtype' => 'PluginLinkdowntimeDowntime',
+                'label'    => __('Link Downtime', 'linkdowntime'),
+                'field'    => 'linkdowntime'
+            ]
+        ];
+    }
+
+    function showForProfile($profiles_id = 0) {
+        global $DB;
         $profile = new Profile();
-        $profile->getFromDB($ID);
-        
-        if (isset($profile->fields['linkdowntime'])) {
-            $rights = $profile->fields['linkdowntime'];
-        } else {
-            $rights = 0;
+        if (!$profile->getFromDB($profiles_id)) {
+            return false;
         }
-        
-        echo "<tr class='tab_bg_2'>";
-        echo "<td width='20%'>" . __('Link Downtime Manager', 'linkdowntime') . "</td>";
-        
-        echo "<td>";
-        Html::showCheckbox([
-            'name'    => '_linkdowntime[r]',
-            'checked' => ($rights & READ),
-            'zero_on_empty' => false
+
+        $current = 0;
+        $iterator = $DB->request([
+            'FROM'  => 'glpi_profilerights',
+            'WHERE' => [
+                'profiles_id' => $profiles_id,
+                'name'        => self::$rightname
+            ],
+            'LIMIT' => 1
         ]);
-        echo " " . __('Read');
-        echo "</td>";
-        
-        echo "<td>";
-        Html::showCheckbox([
-            'name'    => '_linkdowntime[w]', 
-            'checked' => ($rights & (CREATE | UPDATE | DELETE)),
-            'zero_on_empty' => false
-        ]);
-        echo " " . __('Write');
-        echo "</td>";
-        
-        echo "<td>";
-        Html::showCheckbox([
-            'name'    => '_linkdowntime[p]',
-            'checked' => ($rights & PURGE),
-            'zero_on_empty' => false
-        ]);
-        echo " " . __('Delete permanently');
-        echo "</td>";
-        
-        echo "</tr>";
-        
-        echo "</table>";
-        echo "</div>";
+        foreach ($iterator as $row) {
+            $current = (int)$row['rights'];
+            break;
+        }
+
+        echo "<form method='post' action='" . Profile::getFormURL() . "'>";
+        echo "<input type='hidden' name='id' value='$profiles_id'>";
+
+        echo '<table class="tab_cadre_fixehov">';
+        echo '<tr><th colspan="5" class="center">Direitos do Link Downtime</th></tr>';
+       echo '<tr>
+            <th class="center">Ação</th>
+            <th class="center">Ler</th>
+            <th class="center">Criar</th>
+            <th class="center">Atualizar</th>
+            <th class="center">Apagar</th>
+            <th class="center">Excluir definitivo</th>
+        </tr>';
+        echo '<tr class="tab_bg_2">';
+        echo '<td class="center">Link Downtime</td>';
+        echo '<td class="center"><input type="checkbox" name="plugin_linkdowntime_rights[r]" value="1" ' . (($current & READ) ? "checked" : "") . '></td>';
+        echo '<td class="center"><input type="checkbox" name="plugin_linkdowntime_rights[c]" value="1" ' . (($current & CREATE) ? "checked" : "") . '></td>';
+        echo '<td class="center"><input type="checkbox" name="plugin_linkdowntime_rights[u]" value="1" ' . (($current & UPDATE) ? "checked" : "") . '></td>';
+        echo '<td class="center"><input type="checkbox" name="plugin_linkdowntime_rights[x]" value="1" ' . (($current & DELETE) ? "checked" : "") . '></td>';
+        echo '<td class="center"><input type="checkbox" name="plugin_linkdowntime_rights[d]" value="1" ' . (($current & PURGE) ? "checked" : "") . '></td>';
+        echo '</tr>';
+        echo '<tr><td colspan="5" class="center"><input type="submit" name="update" value="Salvar" class="btn btn-primary"></td></tr>';
+        echo '</table>';
+        Html::closeForm();
+
+        return true;
     }
-    
-    /**
-     * Criar direitos do plugin em todos os perfis
-     */
-    static function createFirstAccess($profiles_id) {
-        // Adicionar direitos padrão para novos perfis
-        self::addDefaultProfileInfos($profiles_id, ['linkdowntime' => 0]);
-    }
-    
-    /**
-     * Obter valor dos direitos do plugin
-     */
+
     static function getRightValue($rights_array) {
-        $rights = 0;
-        
-        if (isset($rights_array['r']) && $rights_array['r']) {
-            $rights |= READ;
+        $value = 0;
+        if (isset($rights_array['r']) && $rights_array['r'] == 1) {
+            $value += READ;
         }
-        if (isset($rights_array['w']) && $rights_array['w']) {
-            $rights |= CREATE | UPDATE | DELETE;
+        if (isset($rights_array['w']) && $rights_array['w'] == 1) {
+            $value += CREATE + UPDATE;
         }
-        if (isset($rights_array['p']) && $rights_array['p']) {
-            $rights |= PURGE;
+        if (isset($rights_array['d']) && $rights_array['d'] == 1) {
+            $value += PURGE;
         }
-        
-        return $rights;
+        return $value;
     }
-    
-    /**
-     * Processar dados do formulário de direitos
-     */
+
     static function changeProfile() {
-        if (isset($_POST['_linkdowntime'])) {
-            $rights = self::getRightValue($_POST['_linkdowntime']);
-            
-            ProfileRight::updateProfileRights(
-                $_POST['id'], 
-                ['linkdowntime' => $rights]
-            );
+        if (isset($_POST['id']) && isset($_POST['plugin_linkdowntime_rights'])) {
+            $profile_id = intval($_POST['id']);
+            $dados = $_POST['plugin_linkdowntime_rights'];
+            $rights = 0;
+            if (!empty($dados['r'])) $rights |= READ;
+            if (!empty($dados['c'])) $rights |= CREATE;
+            if (!empty($dados['u'])) $rights |= UPDATE;
+            if (!empty($dados['x'])) $rights |= DELETE;
+            if (!empty($dados['d'])) $rights |= PURGE;
+
+            unset($_POST['plugin_linkdowntime_rights']);
+            ProfileRight::updateProfileRights($profile_id, [self::$rightname => $rights]);
         }
     }
+
 }
