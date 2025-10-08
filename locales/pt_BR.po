@@ -118,6 +118,9 @@ msgstr "Localizações Afetadas"
 msgid "Total Downtime (hours)"
 msgstr "Tempo Total de Queda (horas)"
 
+msgid "Total Downtime"
+msgstr "Tempo Total de Queda"
+
 msgid "Downtime %"
 msgstr "% de Queda"
 
@@ -133,5 +136,23 @@ msgstr "Incidentes"
 msgid "Downtime (hours)"
 msgstr "Tempo de Queda (horas)"
 
+msgid "Downtime"
+msgstr "Tempo de Queda"
+
 msgid "Downtime Statistics for %d"
 msgstr "Estatísticas de Queda para %d"
+
+msgid "Downtime Statistics for %s"
+msgstr "Estatísticas de Queda para %s"
+
+msgid "Link Downtime Dashboard"
+msgstr "Dashboard de Quedas de Link"
+
+msgid "Month:"
+msgstr "Mês:"
+
+msgid "Months:"
+msgstr "Meses:"
+
+msgid "All Year"
+msgstr "Ano Todo"

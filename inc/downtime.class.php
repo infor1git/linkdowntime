@@ -143,7 +143,7 @@ class PluginLinkdowntimeDowntime extends CommonDBTM {
         echo "<table class='tab_cadre_fixe'>";
         echo "<tr class='tab_bg_1'>";
         echo "<th colspan='2'>";
-        echo "<i class='fas fa-network-wired me-2'></i>";
+        echo "<i class='fab fa-cloudsmith me-2'></i>";
         echo __('Link Downtimes associated with this ticket', 'linkdowntime');
         echo "</th>";
         echo "</tr>";
@@ -655,12 +655,14 @@ class PluginLinkdowntimeDowntime extends CommonDBTM {
     }
     
     // Métodos de estatísticas mantidos (não alterados)
-    public static function getDowntimeStatsByLocation($year = null) {
+    public static function getDowntimeStatsByLocation($year = null, $month = 0) {
         global $DB;
         
         if ($year === null) {
             $year = date('Y');
         }
+        $where = "YEAR(d.start_datetime) = $year";
+        if ($month > 0) $where .= " AND MONTH(d.start_datetime) = $month";
         
         $query = "SELECT 
                     l.id as location_id,
@@ -669,7 +671,7 @@ class PluginLinkdowntimeDowntime extends CommonDBTM {
                     SUM(TIMESTAMPDIFF(MINUTE, d.start_datetime, d.end_datetime)) as total_downtime_minutes
                   FROM glpi_locations l
                   LEFT JOIN glpi_plugin_linkdowntime_downtimes d ON l.id = d.locations_id 
-                    AND YEAR(d.start_datetime) = '$year'
+                    AND $where
                     AND d.is_deleted = 0
                     AND d.start_datetime IS NOT NULL 
                     AND d.end_datetime IS NOT NULL
@@ -683,8 +685,9 @@ class PluginLinkdowntimeDowntime extends CommonDBTM {
             $downtime_minutes = (int)$row['total_downtime_minutes'];
             $downtime_hours = round($downtime_minutes / 60, 2);
             
+            $totalhours = ($month > 0 ? 720 : 8760);
             $total_hours_year = 8760;
-            $downtime_percentage = $downtime_minutes > 0 ? round(($downtime_hours / $total_hours_year) * 100, 4) : 0;
+            $downtime_percentage = $downtime_minutes > 0 ? round(($downtime_hours / $totalhours) * 100, 4) : 0;
             
             $stats[] = [
                 'location_id' => $row['location_id'],
@@ -700,14 +703,16 @@ class PluginLinkdowntimeDowntime extends CommonDBTM {
         return $stats;
     }
     
-    public static function getGlobalDowntimeStats($year = null) {
+    public static function getGlobalDowntimeStats($year = null, $month = 0) {
         global $DB;
-        if ($year == null) $year = date('Y');
+        if ($year === null) $year = date('Y');
+        $where = "YEAR(d.start_datetime) = $year";
+        if ($month > 0) $where .= " AND MONTH(d.start_datetime) = $month";
         $year = intval($year);
 
         $query = "SELECT COUNT(d.id) as total_incidents, SUM(TIMESTAMPDIFF(MINUTE, d.start_datetime, d.end_datetime)) as total_downtime_minutes, COUNT(DISTINCT d.locations_id) as affected_locations 
                 FROM glpi_plugin_linkdowntime_downtimes d 
-                WHERE YEAR(d.start_datetime) = $year
+                WHERE $where
                     AND d.is_deleted = 0 
                     AND d.start_datetime IS NOT NULL 
                     AND d.end_datetime IS NOT NULL";
@@ -729,6 +734,8 @@ class PluginLinkdowntimeDowntime extends CommonDBTM {
 
         $row = $DB->fetchAssoc($result); // só vai executar se o result for válido!
         
+        
+
         $downtime_minutes = (int)$row['total_downtime_minutes'];
         $downtime_hours = round($downtime_minutes / 60, 2);
         
@@ -737,8 +744,9 @@ class PluginLinkdowntimeDowntime extends CommonDBTM {
         $locations_row = $DB->fetchAssoc($locations_result);
         $total_locations = (int)$locations_row['total_locations'];
         
+        $totalhours = ($month > 0 ? 720 * $total_locations : 8760 * $total_locations);
         $total_hours_year = 8760 * $total_locations;
-        $downtime_percentage = $downtime_minutes > 0 ? round(($downtime_hours / ($total_hours_year > 0 ? $total_hours_year : 8760)) * 100, 4) : 0;
+        $downtime_percentage = $downtime_minutes > 0 ? round(($downtime_hours / ($totalhours > 0 ? $totalhours : 8760)) * 100, 4) : 0;
         
         return [
             'total_incidents' => (int)$row['total_incidents'],
@@ -749,6 +757,14 @@ class PluginLinkdowntimeDowntime extends CommonDBTM {
             'downtime_percentage' => $downtime_percentage,
             'uptime_percentage' => round(100 - $downtime_percentage, 4)
         ];
+    }
+
+    public static function formatDurationMinutes($minutes) {
+        $h = floor($minutes / 60);
+        $m = $minutes % 60;
+        if ($h > 0 && $m > 0) return "{$h}h {$m}m";
+        if ($h > 0) return "{$h}h";
+        return "{$m}m";
     }
     
     public static function getSuppliersWithTag() {
